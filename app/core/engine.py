@@ -1,28 +1,23 @@
 import pygame
 from OpenGL.GL import *
 from OpenGL.GLU import gluPerspective
-from app.core.camera import Camera
-from app.core.input_controller import InputController
 from app.core.renderer import Renderer
 from app.core.ui import UIOverlay
-from app.world.entity import Entity
-from app.world.scene import Scene
 
 
 class Engine:
     def __init__(self):
         pygame.init()
-        pygame.mouse.set_visible(False)
-        pygame.event.set_grab(True)
-        pygame.mouse.get_rel()
-        pygame.mouse.set_pos(400, 300)
-        self.screen = pygame.display.set_mode((800, 600), pygame.DOUBLEBUF | pygame.OPENGL)
+        self.width = 1920
+        self.height = 1080
+        self.screen = pygame.display.set_mode((self.width, self.height), pygame.DOUBLEBUF | pygame.OPENGL)
         self.clock = pygame.time.Clock()
+        self.state = None
 
-        glViewport(0, 0, 800, 600)
+        glViewport(0, 0, self.width, self.height)
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
-        gluPerspective(45, 800 / 600, 0.1, 50.0)
+        gluPerspective(45, self.width / self.height, 0.1, 50.0)
         glMatrixMode(GL_MODELVIEW)
 
         glEnable(GL_DEPTH_TEST)
@@ -30,11 +25,20 @@ class Engine:
         glClearColor(0.02, 0.02, 0.05, 1.0)
 
         self.renderer = Renderer()
-        self.scene = Scene()
-        self.camera = Camera()
-        self.input_controller = InputController(self.camera)
         self.ui = UIOverlay()
         self.running = True
+
+    def change_state(self, new_state):
+        if self.state is not None:
+            self.state.exit()
+
+        self.state = new_state
+        self.state.enter()
+
+    def set_mouse_capture(self, enabled):
+        pygame.mouse.set_visible(not enabled)
+        pygame.event.set_grab(enabled)
+        pygame.mouse.get_rel()
 
     def run(self):
         self.delta_time = 0
@@ -42,55 +46,14 @@ class Engine:
             self.delta_time = self.clock.tick(60) / 1000.0
             
             self.handle_events()
-            self.input_controller.process_frame(self.delta_time)
-            self.update()
-            self.render()
+            if self.state is not None:
+                self.state.update(self.delta_time)
+                self.state.render()
             pygame.display.flip()
 
     def handle_events(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
-
-
-    def update(self):
-        for e in self.scene.entities:
-            e.transform.rotation[1] += 90 * self.delta_time
-
-    def render(self):
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-
-        self.camera.apply()
-
-        for e in self.scene.entities:
-            glPushMatrix()
-
-            t = e.transform
-
-            glTranslatef(*t.position)
-            glRotatef(t.rotation[0], 1, 0, 0)
-            glRotatef(t.rotation[1], 0, 1, 0)
-            glRotatef(t.rotation[2], 0, 0, 1)
-            glScalef(*t.scale)
-
-            self.renderer.draw(e)
-
-            glPopMatrix()
-
-        self.ui.draw(800, 600, self.camera)
-
-    def set_scene(self, mesh, texture):
-        self.scene.add(Entity(mesh, texture))
-
-    def add_entity(self, mesh, texture, position=None, rotation=None, scale=None):
-        entity = Entity(mesh, texture)
-
-        if position is not None:
-            entity.transform.position = list(position)
-        if rotation is not None:
-            entity.transform.rotation = list(rotation)
-        if scale is not None:
-            entity.transform.scale = list(scale)
-
-        self.scene.add(entity)
-        return entity
+            elif self.state is not None:
+                self.state.handle_event(event)
