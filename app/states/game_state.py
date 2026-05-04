@@ -7,6 +7,8 @@ from app.world.prefabs import create_camera
 from app.world.scene import Scene
 from app.world.systems.camera_input_system import CameraInputSystem
 from app.world.systems.camera_view_system import CameraViewSystem
+from app.world.systems.movement_system import MovementSystem
+from app.world.systems.orbit_system import OrbitSystem
 from app.world.systems.render_system import RenderSystem
 from app.world.systems.spin_system import SpinSystem
 
@@ -15,8 +17,13 @@ class GameState(BaseState):
     def __init__(self, engine):
         super().__init__(engine)
         self.scene = Scene()
+        self.menu_spaces = []
+        self.menu_selection = 0
+        self.show_euclidean_guides = False
         self.scene.add_system(CameraInputSystem())
         self.scene.add_system(SpinSystem())
+        self.scene.add_system(MovementSystem())
+        self.scene.add_system(OrbitSystem())
         self.camera_view_system = CameraViewSystem()
         self.render_system = RenderSystem(self.engine.renderer)
         self.camera_entity = create_camera(self.scene, position=(0, 0, 3))
@@ -31,7 +38,9 @@ class GameState(BaseState):
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             from app.states.menu_state import MenuState
 
-            self.engine.change_state(MenuState(self.engine, self))
+            self.engine.change_state(
+                MenuState(self.engine, self.menu_spaces, self.menu_selection)
+            )
 
     def update(self, delta_time):
         self.scene.update(delta_time)
@@ -40,7 +49,10 @@ class GameState(BaseState):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
         self.camera_view_system.apply(self.scene)
-        self.render_system.render(self.scene)
+        self.render_system.render(
+            self.scene,
+            show_euclidean_guides=self.show_euclidean_guides,
+        )
         self.engine.ui.draw_hud(
             self.engine.width,
             self.engine.height,

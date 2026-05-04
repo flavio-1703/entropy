@@ -36,7 +36,7 @@ class UIOverlay:
         glPopMatrix()
         glMatrixMode(GL_MODELVIEW)
 
-    def draw_menu(self, width, height):
+    def draw_menu(self, width, height, options, selected_index):
         self._begin_overlay(width, height)
 
         glColor4f(0.01, 0.02, 0.04, 0.92)
@@ -48,8 +48,20 @@ class UIOverlay:
         glEnd()
 
         self._draw_centered_text(width / 2, height / 2 - 60, "ENTROPY", self.title_font)
-        self._draw_centered_text(width / 2, height / 2 - 8, "Press Enter to Start", self.font)
-        self._draw_centered_text(width / 2, height / 2 + 18, "Press Esc to Quit", self.font)
+        self._draw_centered_text(width / 2, height / 2 - 16, "Choose a space", self.font)
+
+        option_y = height / 2 + 16
+        for index, option in enumerate(options):
+            prefix = "> " if index == selected_index else "  "
+            self._draw_centered_text(width / 2, option_y, f"{prefix}{option}", self.font)
+            option_y += 24
+
+        self._draw_centered_text(
+            width / 2,
+            option_y + 18,
+            "W/S or Up/Down to Select   Enter to Start   Esc to Quit",
+            self.font,
+        )
 
         self._end_overlay()
 
@@ -116,7 +128,7 @@ class UIOverlay:
     def _draw_text(self, camera, transform):
         lines = [
             "Entropy Debug HUD",
-            "Move: WASD   Look: Mouse",
+            "Move: WASD Space Shift   Look: Mouse",
             f"Pos: {transform.position[0]: .2f} {transform.position[1]: .2f} {transform.position[2]: .2f}",
             f"Yaw/Pitch: {camera.yaw: .1f} / {camera.pitch: .1f}",
         ]
